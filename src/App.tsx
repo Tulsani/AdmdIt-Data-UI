@@ -1,6 +1,11 @@
 import { useState } from "react";
 import "./App.css";
-import { doSubmitForm, getSignedUrl, getStudentDetailsById } from "./actions";
+import {
+  doSubmitForm,
+  getSignedUrl,
+  getStudentDetailsById,
+  putFileToS3,
+} from "./actions";
 
 const convertFileToBase64Async = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -36,16 +41,18 @@ function App() {
   const handleChangeFile = async (event: any) => {
     const fileList = event?.target?.files;
     if (fileList.length > 0) {
-      const data: any = await convertFileToBase64Async(fileList[0]);
-      const prepareRequestBody = {
-        flowSelected: "upload-to-s3",
-        fileContent: data?.base64DataURI,
-      };
-      const uploadedFileResponse = await getSignedUrl(data?.mimeType);
-      console.log({ uploadedFileResponse });
+      const uploadedFileResponse = await getSignedUrl(fileList[0]?.type);
+      const signedURLObject = JSON.parse(uploadedFileResponse["data"]["body"]);
+      console.log({ signedURLObject });
+      const s3Response = await putFileToS3(
+        signedURLObject["uploadURL"],
+        fileList[0],
+        fileList[0]?.type
+      );
+      console.log({ s3Response });
       setStudentData({
         ...studentData,
-        fileName: uploadedFileResponse?.fileName,
+        fileName: signedURLObject["photoFilename"],
       });
     }
   };
@@ -99,6 +106,12 @@ function App() {
             <option value="RAJASTHAN">RAJASTHAN</option>
           </select>
         </div>
+        <input
+          type="text"
+          onChange={(event) =>
+            setStudentData({ ...studentData, studentId: event?.target?.value })
+          }
+        />
         <button type="button" onClick={handleClickEvent}>
           Submit
         </button>
